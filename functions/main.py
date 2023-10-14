@@ -16,20 +16,24 @@ app = initialize_app()
 
 def webhook_processor(req: https_fn.Request) -> https_fn.Response:
     resp = {
-        "fulfillmentResponse": {{
+        "fulfillmentResponse": {
             "messages": [
                 {
-                    "text": {
-                        [
-                            "This is string 1",
-                            "This is string 2",
-                        ]
-                    },
+                    "text": [
+                        "This is string 1",
+                        "This is string 2"
+                    ]
                 }
             ],
-        }}
+            "sessionInfo": {
+                "parameters": {
+                    "success": True
+                }
+            }
+        }
     }
-    return https_fn.Response(response=json.dumps(resp), content_type='application/json')
+    # resp = 'Hello'
+    return https_fn.Response(response=resp)
 
 
 @https_fn.on_request()
