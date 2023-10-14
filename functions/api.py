@@ -1,3 +1,4 @@
+from collections import Counter
 from json import dumps
 
 from firebase_admin import firestore
@@ -41,16 +42,70 @@ def generate_query_ref(req_json: dict) -> BaseQuery:
 
     if (transaction_type !=""):
         # If company included in filter
-        query_ref = query_ref.where(filter=FieldFilter("company","==",transaction_type))
-
-
-
-
-    # TODO : If req_data contains the key `filter` with additional conditions
-    #  in the format "filter" : {"company":"Paypal"}, query_ref needs to have
-    #  one more .where() condition.
+        query_ref = query_ref.where(filter=FieldFilter("tx_type","==",transaction_type))
 
     return query_ref
+
+
+def validate_request(req: https_fn.Request)->dict:
+    # Return error if there is no JSON value passed in the request body
+    if req.content_type != 'application/json':
+        raise Exception("Are you passing a JSON in the body? Use Postman, not the browser")
+        # resp = {"error": }
+        # return https_fn.Response(response=dumps(resp), status=500, content_type='application/json')
+
+    req_data = req.json
+
+    # Return error if the JSON body does not have necessary key -> user_id
+    if 'user_id' not in req_data:
+        #resp = {"error": "Please include a JSON in the body with `user_id` key set as `user_1`"}
+        raise Exception("Please include a JSON in the body with `user_id` key set as `user_1`")
+        #return https_fn.Response(response=dumps(resp), status=500, content_type='application/json')
+
+    return req_data
+
+
+def retrieve_categories(req: https_fn.Request) -> https_fn.Response:
+    req_data = validate_request(req)
+
+    query_ref = generate_query_ref(req_data)
+    query_results = query_ref.get() #ok so this is a list of arrays
+
+    #foreach unique item in the dictionary, count
+    counts = dict()
+    for i in query_results:  #ok wait, list of dictionaries? or list of arrays so access each row by query_results[i], then access key with .get(key)
+        category = (query_results[i]).get("tx_type")
+        #if its arrays this will need to be (query_results[i])[5]
+        counts[category] = counts.get(category, 0) + 1
+
+    #using counter obj type?
+    #resultDict = Counter(query_results)
+
+    #i think this is going to return the category name and the counts ??
+    https_fn.Response(response=dumps({"categories": counts}), content_type='application/json')
+
+
+
+
+def evaluate_user_response(req: https_fn.Request) -> https_fn.Response:
+    req_data = validate_request(req)
+
+    #this is already going to be the filtered list based on categories so literally just sum it
+    query_ref = generate_query_ref(req_data)
+    query_results = query_ref.get()
+    sum = 0
+
+    for i in query_results:  # ok wait, list of dictionaries? or list of arrays so access each row by query_results[i], then access key with .get(key)
+        sum = sum + (query_results[i])[1]
+        # if its arrays this will need to be (query_results[i])[5]
+
+    resp = {"sum": sum}
+
+    https_fn.Response(response=dumps(resp), content_type='application/json')
+
+
+
+
 
 
 def retrieve_user_data(req: https_fn.Request) -> https_fn.Response:

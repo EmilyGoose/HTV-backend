@@ -7,7 +7,7 @@ from firebase_functions import https_fn
 from firebase_admin import initialize_app, firestore
 from firebase_functions import options
 
-from api import retrieve_user_data
+from api import retrieve_user_data, evaluate_user_response, retrieve_categories
 
 options.set_global_options(max_instances=10)
 
@@ -40,5 +40,9 @@ def webhook_processor(req: https_fn.Request) -> https_fn.Response:
 def on_request_example(req: https_fn.Request) -> https_fn.Response:
     if req.path == '/transactions':
         return retrieve_user_data(req)
+    if req.path == '/transactions/categories':
+        return retrieve_categories(req)
+    if req.path == '/transactions/evaluate':
+        return evaluate_user_response(req)
     if req.path == '/webhook':
         return webhook_processor(req)
