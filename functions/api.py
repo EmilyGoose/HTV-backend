@@ -74,9 +74,13 @@ def retrieve_categories(req: https_fn.Request) -> https_fn.Response:
     #foreach unique item in the dictionary, count
     counts = dict()
     for i in query_results:  #ok wait, list of dictionaries? or list of arrays so access each row by query_results[i], then access key with .get(key)
-        category = (query_results[i]).get("tx_type")
+        i = i.to_dict()
+        category = i.get("tx_type")
         #if its arrays this will need to be (query_results[i])[5]
-        counts[category] = counts.get(category, 0) + 1
+        if (counts[category] !=""):
+            counts[category] = 1
+        else:
+            counts[category] = counts.get('category') + 1
 
     #using counter obj type?
     #resultDict = Counter(query_results)
@@ -96,7 +100,8 @@ def evaluate_user_response(req: https_fn.Request) -> https_fn.Response:
     sum = 0
 
     for i in query_results:  # ok wait, list of dictionaries? or list of arrays so access each row by query_results[i], then access key with .get(key)
-        sum = sum + (query_results[i])[1]
+        i = i.to_dict()
+        sum = sum + i.get("cost")
         # if its arrays this will need to be (query_results[i])[5]
 
     resp = {"sum": sum}
