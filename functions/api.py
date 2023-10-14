@@ -1,3 +1,4 @@
+import json
 from collections import Counter
 from json import dumps
 
@@ -5,6 +6,7 @@ from firebase_admin import firestore
 from firebase_functions import https_fn
 from google.cloud.firestore_v1 import DocumentReference, FieldFilter, CollectionReference
 from google.cloud.firestore_v1.base_query import BaseQuery
+import openai
 
 
 # Query Firestore based on the request_json
@@ -72,25 +74,28 @@ def retrieve_categories(req: https_fn.Request) -> https_fn.Response:
     query_results = query_ref.get()  # ok so this is a list of arrays
 
     # foreach unique item in the dictionary, count
-    counts = dict()
+    counts = Counter()
     for i in query_results:  # ok wait, list of dictionaries? or list of arrays so access each row by query_results[i], then access key with .get(key)
         i = i.to_dict()
         category = i.get("tx_type")
+        counts[category] += 1
         # if its arrays this will need to be (query_results[i])[5]
-        if (counts[category] != ""):
-            counts[category] = 1
-        else:
-            counts[category] = counts.get('category') + 1
+        # if counts[category] != "":
+        #     counts[category] = 1
+        # else:
+        #     counts[category] = counts.get('category') + 1
 
     # using counter obj type?
     # resultDict = Counter(query_results)
 
     # i think this is going to return the category name and the counts ??
-    return https_fn.Response(response=dumps({"categories": counts}), content_type='application/json')
+    return https_fn.Response(response=dumps({"categories": list(counts.keys())}), content_type='application/json')
 
 
 def evaluate_user_response(req: https_fn.Request) -> https_fn.Response:
     req_data = validate_request(req)
+    expected_amount = req_data['expected_amount']
+    category = req_data['filter']['tx_type']
 
     # this is already going to be the filtered list based on categories so literally just sum it
     query_ref = generate_query_ref(req_data)
@@ -102,7 +107,32 @@ def evaluate_user_response(req: https_fn.Request) -> https_fn.Response:
         sum = sum + i.get("cost")
         # if its arrays this will need to be (query_results[i])[5]
 
-    resp = {"sum": sum}
+    spent_amount = round(sum * -1)
+
+    messages = [{"role": "system", "content": """You are a helpful assistant"""}]
+    if expected_amount > spent_amount:
+        message = f"""You are a intelligent finance coach who is reviewing my spending habits.
+        I have stayed within my budget for {category}. 
+        Generate a 2 line congratulatory comment on my spending habit."""
+    else:
+        message = f"""You are a intelligent finance coach who is reviewing my spending habits. 
+        I have spent more that I expected for {category}.
+        Generate a 2 line comment on my spending habit.
+        Express a little disappointment.
+        Also add a relevant tip on how to reduce spending on {category}."""
+
+    messages.append(
+        {"role": "user", "content": message},
+    )
+
+    print(json.dumps(messages))
+
+    chat = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo", messages=messages
+    )
+    reply = chat.choices[0].message.content
+
+    resp = {"reply": reply, "spent_amount":spent_amount}
 
     return https_fn.Response(response=dumps(resp), content_type='application/json')
 
