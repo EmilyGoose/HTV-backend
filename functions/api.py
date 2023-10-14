@@ -8,14 +8,43 @@ from google.cloud.firestore_v1.base_query import BaseQuery
 
 # Query Firestore based on the request_json
 def generate_query_ref(req_json: dict) -> BaseQuery:
+    # {"user_id":"user_1", "filter" : {"pay_mode":"Paypal/credit", "tx_type":"travel/food/"}}
     user_id = req_json['user_id']
+
+    filters = req_json['filter']  #not sure if this sticks it into another dictionary or just dumps as a string
+
+    #go ahead and dig into the filters passed
+    if (filters != ""):
+        try:
+            company = req_json['filter']['company']
+        except:
+            company = ""
+            print("error")
+
+        try:
+            transaction_type = req_json['filter']['tx_type']
+        except:
+            transaction_type = ""
+            print("error")
+
+
     db = firestore.client()
     txn_collection: CollectionReference = db.collection("transactions")
 
     # Default query
-    query_ref = txn_collection.where(filter=FieldFilter("user",
-                                                        "==",
+    query_ref = txn_collection.where(filter=FieldFilter("user","==",
                                                         DocumentReference('users', user_id, client=db)))
+
+    if (company !=""):
+        # If company included in filter
+        query_ref = query_ref.where(filter=FieldFilter("company","==",company))
+
+    if (transaction_type !=""):
+        # If company included in filter
+        query_ref = query_ref.where(filter=FieldFilter("company","==",transaction_type))
+
+
+
 
     # TODO : If req_data contains the key `filter` with additional conditions
     #  in the format "filter" : {"company":"Paypal"}, query_ref needs to have
