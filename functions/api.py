@@ -95,7 +95,13 @@ def retrieve_categories(req: https_fn.Request) -> https_fn.Response:
 def evaluate_user_response(req: https_fn.Request) -> https_fn.Response:
     req_data = validate_request(req)
     expected_amount = req_data['expected_amount']
-    category = req_data['filter']['tx_type']
+    try:
+        category = req_json['filter']['company']
+    except:
+        try:
+            transaction_type = req_json['filter']['tx_type']
+        except:
+            transaction_type = "Error" # hardcoded fallback b/c i cba
 
     # this is already going to be the filtered list based on categories so literally just sum it
     query_ref = generate_query_ref(req_data)
